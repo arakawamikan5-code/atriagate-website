@@ -37,12 +37,23 @@ const observer = new IntersectionObserver(entries => {
 }, {threshold: 0.55});
 document.querySelectorAll('[data-index]').forEach(section => observer.observe(section));
 document.querySelectorAll('.marquee-window').forEach(gallery => {
-  let paused = false, previous = 0, resumeAt = 0;
-  gallery.addEventListener('pointerenter', () => paused = true);
-  gallery.addEventListener('pointerleave', () => paused = false);
-  gallery.addEventListener('focusin', () => paused = true);
-  gallery.addEventListener('focusout', () => paused = false);
-  gallery.addEventListener('touchstart', () => resumeAt = performance.now() + 4000, {passive:true});
+  let hovered = false, previous = 0, resumeAt = 0;
+  let position = gallery.scrollLeft, lastApplied = position;
+  const pointers = new Set();
+  // Touch creates pointer/focus events too, but must not leave a sticky hover pause.
+  gallery.addEventListener('pointerenter', e => {
+    if (e.pointerType === 'mouse') hovered = true;
+  });
+  gallery.addEventListener('pointerleave', e => {
+    if (e.pointerType === 'mouse') hovered = false;
+  });
+  gallery.addEventListener('pointerdown', e => pointers.add(e.pointerId));
+  const release = e => {
+    if (pointers.delete(e.pointerId)) resumeAt = performance.now() + 4000;
+  };
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', release);
+  window.addEventListener('blur', () => { pointers.clear(); hovered = false; });
   gallery.addEventListener('keydown', e => {
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       e.preventDefault();
@@ -52,10 +63,18 @@ document.querySelectorAll('.marquee-window').forEach(gallery => {
   function frame(now) {
     const delta = previous ? Math.min(now - previous, 50) : 0;
     previous = now;
-    if (!paused && !reducedMotion.matches && now > resumeAt && !document.hidden) {
-      gallery.scrollLeft += delta * 0.035;
+    const focused = document.activeElement;
+    const keyboardFocus = focused && gallery.contains(focused) && focused.matches(':focus-visible');
+    if (!hovered && !pointers.size && !keyboardFocus && !reducedMotion.matches && now > resumeAt && !document.hidden) {
+      // Keep fractional progress: high-refresh-rate phones can round subpixel writes to zero.
+      if (gallery.scrollLeft !== lastApplied) position = gallery.scrollLeft;
+      position += delta * 0.035;
       const first = gallery.querySelector('.marquee-set');
-      if (first && gallery.scrollLeft >= first.offsetWidth) gallery.scrollLeft -= first.offsetWidth;
+      if (first && first.offsetWidth > 0) position %= first.offsetWidth;
+      gallery.scrollLeft = position;
+      lastApplied = gallery.scrollLeft;
+    } else {
+      position = lastApplied = gallery.scrollLeft;
     }
     requestAnimationFrame(frame);
   }
