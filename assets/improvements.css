@@ -1,0 +1,13 @@
+/* Preserve the original layout while allowing the supplied comments to grow. */
+.leader-copy blockquote { overflow-wrap: anywhere; }
+.f-entry-mail strong, .f-menu-mail { overflow-wrap: anywhere; }
+.division-header, .division-header .atriagate-brand { color: #073447; }
+.division-header { border-bottom-color: #cbd7d9; }
+.division-header nav a.active { border-bottom-color: currentColor; }
+.division-switch { display: block; }
+:focus-visible { outline: 3px solid #078aaa; outline-offset: 5px; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .f-intro { display: none; }
+}
